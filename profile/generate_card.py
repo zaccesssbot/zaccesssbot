@@ -165,15 +165,17 @@ def loc_row(y, additions, deletions):
     label = "Lines of Code"
     lead = f"{total:,}"
     add_str, del_str = f"{additions:,}", f"{deletions:,}"
-    # measure the real plain text width (tspan tags add no visual width) so dots land the
-    # closing brace on the same LINE_WIDTH column as every other row, main included
-    prefix = f". {label}: "
-    suffix = f" | {{ {add_str}++, {del_str}-- }}"
-    n = LINE_WIDTH - len(prefix) - len(lead) - len(suffix)
-    dots = "." * max(1, n)
-    content = (cc(". ") + key(label) + cc(f": {dots} ") + val(lead) + cc(" | { ")
-               + f'<tspan fill="{{add}}">{add_str}++</tspan>' + cc(", ")
-               + f'<tspan fill="{{delete}}">{del_str}--</tspan>' + cc(" }"))
+    # left half uses the exact same PAIR_LEFT budget as every dual_row, so the " | " lands on
+    # the same column as Followers | Stars, Commits | PRs and the rest, not wherever this row's
+    # own value length happens to push it
+    left = segment(label, lead, PAIR_LEFT, leading_dot=True)
+    inner = f"{add_str}++, {del_str}--"
+    pad = PAIR_RIGHT - 2 - len(inner)  # 2 = the braces
+    lp, rp = pad // 2, pad - pad // 2
+    right = (cc("{") + cc(" " * lp)
+             + f'<tspan fill="{{add}}">{add_str}++</tspan>' + cc(", ")
+             + f'<tspan fill="{{delete}}">{del_str}--</tspan>' + cc(" " * rp) + cc("}"))
+    content = left + cc(" | ") + right
     return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{FONT_SIZE}" xml:space="preserve">{content}</text>'
 
 

@@ -40,20 +40,16 @@ TAGLINE = [
     ("Status", "rm -rf boring_tasks && automate"),
 ]
 
-ROBOT_ART = [
-    "    ___________    ",
-    "   |  .-----.  |   ",
-    "   | ( o   o ) |   ",
-    "   |  '-----'  |   ",
-    "   |___________|   ",
-    "    |    |    |    ",
-    "  .-+-.  |  .-+-.  ",
-    "  |   |  |  |   |  ",
-    "  '---'  |  '---'  ",
-    "       __|__       ",
-    "      |     |      ",
-    "      |_____|      ",
-]
+ROBOT_ART_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "robot_ascii.txt")
+
+
+def load_robot_art() -> list[str]:
+    with open(ROBOT_ART_PATH, encoding="utf-8") as f:
+        return f.read().splitlines()
+
+
+ROBOT_ART = load_robot_art()
+
 ROBOT_FONT_SIZE = 22  # big enough that the art fills a real share of the card, not a small
                        # glyph lost in the left column
 ROBOT_STEP = 30        # fixed natural line height at ROBOT_FONT_SIZE, not stretched to fit the

@@ -6,11 +6,10 @@ Modelled on the visual system of zaccesss/zaccesss's own profile.py: the same do
 neofetch row format (one leading dot per line, every row's value ending at the same right
 column regardless of label length), the same paired "label value | label value" dual rows,
 the same Git Stats row grouping (Followers|Stars, Commits|PRs, Issues|Reviews, Repos|Forks,
-Gists|Contribs, Uptime|Streak) and the same GitHub diff style colour roles. Scoped down to
-what this account actually is: no personal fields, and no lines-of-code add/delete stat, since
-a fresh automation account with only template commits has none of that worth computing yet.
-Unlike the main card, forks and gists are shown rather than hidden, since forking other
-projects to contribute upstream is this account's main activity.
+Gists|Contribs, Uptime|Streak, Lines of Code) and the same GitHub diff style colour roles.
+Scoped down to what this account actually is: no personal fields, since a fresh automation
+account has none worth showing. Unlike the main card, forks and gists are shown rather than
+hidden, since forking other projects to contribute upstream is this account's main activity.
 """
 
 import json
@@ -22,10 +21,11 @@ from html import escape as esc
 USER = "zaccesssbot"
 TOKEN = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
 
-LINE_WIDTH = 46   # character budget for a full row; every value ends at this column
-PAIR_WIDTH = 22   # character budget for each half of a dual row, before the " | "
-STATS_X = 300
-ASCII_X = 40
+SVG_WIDTH = 1120  # same canvas width as zaccesss/zaccesss's own card
+LINE_WIDTH = 70   # character budget for a full row; same as the main card, every value ends here
+PAIR_WIDTH = 34   # character budget for each half of a dual row, before the " | "
+STATS_X = 410     # same column as the main card
+ASCII_X = 35      # same column as the main card
 ROW_START = 40
 FONT_SIZE = 13    # one size everywhere, header included, so char-width math lines up pixel for
                    # pixel and every row's right edge falls on the same column
@@ -152,7 +152,7 @@ def dual_row(y, l1, v1, l2, v2):
 
 
 def loc_row(y, additions, deletions):
-    total = additions + deletions
+    total = additions - deletions  # net change, matching the main card's own number exactly
     label = "lines of code"
     lead = f"{total:,}"
     n = LINE_WIDTH - len(label) - 2 - 1 - len(lead) - 2 - len(f"{additions:,}++, {deletions:,}--")
@@ -203,7 +203,7 @@ def build_svg(mode: str, stats: dict) -> str:
 
     stats_bottom = y
     h = stats_bottom + 20
-    w = 820
+    w = SVG_WIDTH
 
     # fixed, undistorted line height (stretching it to match the stats block breaks the
     # parens/corners alignment), vertically centred in the available space instead

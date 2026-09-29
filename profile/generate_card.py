@@ -50,10 +50,8 @@ def load_robot_art() -> list[str]:
 
 ROBOT_ART = load_robot_art()
 
-ROBOT_FONT_SIZE = 22  # big enough that the art fills a real share of the card, not a small
-                       # glyph lost in the left column
-ROBOT_STEP = 30        # fixed natural line height at ROBOT_FONT_SIZE, not stretched to fit the
-                        # stats block, since distorting it breaks the parens' and corners' alignment
+ROBOT_BASE_FONT_SIZE = 8  # base size before the fill-scale transform below
+ROBOT_BASE_STEP = 8       # base line height before the fill-scale transform below
 
 
 def api(path):
@@ -237,20 +235,22 @@ def build_svg(mode: str, stats: dict) -> str:
     h = stats_bottom + 20
     w = SVG_WIDTH
 
-    # fixed, undistorted line height (stretching it to match the stats block breaks the
-    # parens/corners alignment), vertically centred in the available space instead
-    art_total = (len(ROBOT_ART) - 1) * ROBOT_STEP
-    art_start = ROW_START + max(0, ((stats_bottom - ROW_START) - art_total) / 2)
-    # horizontally centred in the column too: every ROBOT_ART line is the same character
-    # count, so one x offset for the whole block is enough
+    # this is dense pixel-mapped art (converted from the real logo), not fragile line art, so
+    # it can be safely stretched with a transform to fill the column exactly on both axes,
+    # rather than only centred at a fixed size
     column_width = STATS_X - ASCII_X - 20
-    block_width = len(ROBOT_ART[0]) * ROBOT_FONT_SIZE * 0.6
-    art_x = ASCII_X + max(0, (column_width - block_width) / 2)
-    robot = "".join(
-        f'<text x="{art_x:.1f}" y="{art_start + i * ROBOT_STEP:.1f}" font-family="{FONT}" font-size="{ROBOT_FONT_SIZE}" '
+    available_height = stats_bottom - ROW_START
+    natural_width = len(ROBOT_ART[0]) * ROBOT_BASE_FONT_SIZE * 0.6
+    natural_height = (len(ROBOT_ART) - 1) * ROBOT_BASE_STEP
+    scale_x = column_width / natural_width
+    scale_y = available_height / natural_height
+    rows_svg = "".join(
+        f'<text x="0" y="{i * ROBOT_BASE_STEP}" font-family="{FONT}" font-size="{ROBOT_BASE_FONT_SIZE}" '
         f'fill="{{value}}" xml:space="preserve">{esc(line)}</text>'
         for i, line in enumerate(ROBOT_ART)
     )
+    robot = (f'<g transform="translate({ASCII_X},{ROW_START}) scale({scale_x:.4f},{scale_y:.4f})">'
+              f'{rows_svg}</g>')
 
     svg_body = "\n  ".join(rows) + "\n  " + robot
     svg_body = (svg_body

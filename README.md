@@ -4,4 +4,4 @@ Automation on behalf of [@zaccesss](https://github.com/zaccesss). This account r
 
 **Links:** [Main account](https://github.com/zaccesss) &nbsp;&bull;&nbsp; [Site](https://isaacadjei.me) &nbsp;&bull;&nbsp; [About this account](https://github.com/zaccesssbot/.github)
 
-**Something look wrong?** Reach out at [automation@isaacadjei.me](mailto:automation@isaacadjei.me).
+**Something looks wrong?** Reach out at [automation@isaacadjei.me](mailto:automation@isaacadjei.me).

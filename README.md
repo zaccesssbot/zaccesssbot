@@ -13,4 +13,4 @@
   <img alt="zaccesssbot" src="profile/profile-dark.svg?v=4" width="100%">
 </picture>
 
-<p align="center">**Something looks wrong?** Reach out at [automation@isaacadjei.me](mailto:automation@isaacadjei.me).</p>
+<p align="center"><strong>Something looks wrong?</strong> Reach out at <a href="mailto:automation@isaacadjei.me">automation@isaacadjei.me</a>.</p>

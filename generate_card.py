@@ -39,6 +39,13 @@ TAGLINE = [
     ("status", "rm -rf boring_tasks && automate"),
 ]
 
+CONTACT = [
+    ("main", "github.com/zaccesss"),
+    ("site", "isaacadjei.me"),
+    ("email", "automation@isaacadjei.me"),
+    ("about", "github.com/zaccesssbot/.github"),
+]
+
 ROBOT_ART = [
     "    ___________    ",
     "   |  .-----.  |   ",
@@ -183,6 +190,12 @@ def build_svg(mode: str, stats: dict) -> str:
     rows.append(header_row(y, "zaccesssbot@github"))
     y += 26
     for label, value in TAGLINE:
+        rows.append(full_row(y, label, value))
+        y += 20
+    y += 8
+    rows.append(section_row(y, "contact"))
+    y += 20
+    for label, value in CONTACT:
         rows.append(full_row(y, label, value))
         y += 20
     y += 8

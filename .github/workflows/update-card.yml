@@ -2,7 +2,8 @@
 # with public_repo scope) rather than the run's own built in token, since the built in token
 # cannot read this account's gists (403 on that endpoint specifically). Also bumps the README's
 # image version query param on every run, so GitHub's raw content cache can never serve a stale
-# card after the SVGs change.
+# card after the SVGs change. Commits are SSH signed with SIGNING_KEY, the same key already
+# registered as this account's signing key, so they show as Verified.
 name: Update profile card
 
 on:
@@ -33,8 +34,15 @@ jobs:
 
       - name: Commit if changed
         run: |
+          umask 077
+          echo "${{ secrets.SIGNING_KEY }}" > /tmp/signing_key
+          chmod 600 /tmp/signing_key
           git config user.name "zaccesssbot"
           git config user.email "automation@isaacadjei.me"
+          git config gpg.format ssh
+          git config user.signingkey /tmp/signing_key
+          git config commit.gpgsign true
           git add profile/ README.md
           git diff --staged --quiet || git commit -m "chore: refresh profile card stats"
           git push
+          rm -f /tmp/signing_key

@@ -49,20 +49,22 @@ def gather_stats():
     }
 
 
-def robot_glyph(cx, cy, scale, accent, tile):
-    """The account's own robot mark, reused at card scale."""
-    t = f"translate({cx - 22 * scale},{cy - 26 * scale}) scale({scale})"
-    return f"""
-  <g transform="{t}">
-    <line x1="22" y1="0" x2="22" y2="8" stroke="{accent}" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="22" cy="-3" r="4.5" fill="{accent}"/>
-    <rect x="0" y="10" width="44" height="38" rx="12" fill="{accent}"/>
-    <rect x="-7" y="22" width="7" height="14" rx="3.5" fill="{accent}"/>
-    <rect x="44" y="22" width="7" height="14" rx="3.5" fill="{accent}"/>
-    <circle cx="13" cy="29" r="5.5" fill="{tile}"/>
-    <circle cx="31" cy="29" r="5.5" fill="{tile}"/>
-    <rect x="12" y="40" width="20" height="5" rx="2.5" fill="{tile}"/>
-  </g>"""
+def robot_glyph(x, y, colour):
+    """ASCII art robot, kept as plain terminal text rather than repeating the solid icon that
+    is already the account's own profile picture."""
+    art = [
+        "    ___     ",
+        "   [o o]    ",
+        "  /|___|\\   ",
+        " (_/   \\_)  ",
+        "   |_ _|    ",
+        "  _/   \\_   ",
+    ]
+    return "".join(
+        f'<text x="{x}" y="{y + i * 18}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" '
+        f'font-size="14" fill="{colour}" xml:space="preserve">{line}</text>'
+        for i, line in enumerate(art)
+    )
 
 
 def typing_rotator(x, y, colour, lines, dur_each=3):
@@ -96,7 +98,7 @@ def build_svg(mode: str, stats: dict) -> str:
     )
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">
   <rect x="0" y="0" width="{w}" height="{h}" rx="16" fill="{p['tile']}"/>
-  {robot_glyph(90, 100, 1.6, p['accent'], p['tile'])}
+  {robot_glyph(40, 70, p['accent'])}
   <text x="200" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16"
         font-weight="700" fill="{p['text']}">zaccesssbot@github</text>
   <line x1="200" y1="46" x2="620" y2="46" stroke="{p['muted']}" stroke-opacity="0.35"/>

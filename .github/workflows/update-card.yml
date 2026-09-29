@@ -1,6 +1,8 @@
 # refreshes the profile card's live stats four times a day. Uses ACCESS_TOKEN (a classic PAT
 # with public_repo scope) rather than the run's own built in token, since the built in token
-# cannot read this account's gists (403 on that endpoint specifically).
+# cannot read this account's gists (403 on that endpoint specifically). Also bumps the README's
+# image version query param on every run, so GitHub's raw content cache can never serve a stale
+# card after the SVGs change.
 name: Update profile card
 
 on:
@@ -22,14 +24,17 @@ jobs:
           python-version: "3.12"
 
       - name: Generate
-        run: python generate_card.py
+        run: python profile/generate_card.py
         env:
           GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: Bump the README's cache-busting version
+        run: sed -i -E "s/(profile-(dark|light)\.svg)\?v=[0-9]+/\1?v=${{ github.run_number }}/g" README.md
 
       - name: Commit if changed
         run: |
           git config user.name "zaccesssbot"
           git config user.email "automation@isaacadjei.me"
-          git add profile/
+          git add profile/ README.md
           git diff --staged --quiet || git commit -m "chore: refresh profile card stats"
           git push

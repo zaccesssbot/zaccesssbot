@@ -1,0 +1,34 @@
+# refreshes the profile card's live stats daily. Uses the run's own built in token, this repo
+# needs no separate secret since it only ever reads public stats and pushes to itself.
+name: Update profile card
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Generate
+        run: python generate_card.py
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit if changed
+        run: |
+          git config user.name "zaccesssbot"
+          git config user.email "automation@isaacadjei.me"
+          git add profile/
+          git diff --staged --quiet || git commit -m "chore: refresh profile card stats"
+          git push

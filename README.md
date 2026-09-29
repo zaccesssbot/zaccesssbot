@@ -8,9 +8,9 @@
 </p>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="profile/profile-dark.svg?v=4">
-  <source media="(prefers-color-scheme: light)" srcset="profile/profile-light.svg?v=4">
-  <img alt="zaccesssbot" src="profile/profile-dark.svg?v=4" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="profile/profile-dark.svg?v=100">
+  <source media="(prefers-color-scheme: light)" srcset="profile/profile-light.svg?v=100">
+  <img alt="zaccesssbot" src="profile/profile-dark.svg?v=100" width="100%">
 </picture>
 
 <p align="center"><strong>Something looks wrong?</strong> Reach out at <a href="mailto:automation@isaacadjei.me">automation@isaacadjei.me</a>.</p>

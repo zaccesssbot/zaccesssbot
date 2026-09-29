@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Generates the zaccesssbot profile card as two SVGs (dark and light), pulling real, live
-stats from the GitHub API: repos, forks, gists, followers, commits, PRs, issues and account age.
+stats from the GitHub API.
 
 Modelled on the visual system of zaccesss/zaccesss's own profile.py: the same dot-filled
-neofetch row format, the same paired "label value | label value" dual rows and the same GitHub
-diff style colour roles (key, value, dots, text). Scoped down to what this account actually is:
-no personal fields (no host, location, IDE), and no lines-of-code add/delete stat, since a fresh
-automation account with only template commits has none of that worth computing yet. Unlike the
-main card, forks and gists are shown rather than hidden, since forking other projects to
-contribute upstream is this account's main activity.
+neofetch row format (one leading dot per line, every row's value ending at the same right
+column regardless of label length), the same paired "label value | label value" dual rows,
+the same Git Stats row grouping (Followers|Stars, Commits|PRs, Issues|Reviews, Repos|Forks,
+Gists|Contribs, Uptime|Streak) and the same GitHub diff style colour roles. Scoped down to
+what this account actually is: no personal fields, and no lines-of-code add/delete stat, since
+a fresh automation account with only template commits has none of that worth computing yet.
+Unlike the main card, forks and gists are shown rather than hidden, since forking other
+projects to contribute upstream is this account's main activity.
 """
 
 import json
@@ -20,19 +22,21 @@ from html import escape as esc
 USER = "zaccesssbot"
 TOKEN = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
 
-LINE_WIDTH = 46   # character budget per half-row; dots fill to this width exactly
-PAIR_WIDTH = 22   # character budget for each side of a dual row, before the " | "
+LINE_WIDTH = 46   # character budget for a full row; every value ends at this column
+PAIR_WIDTH = 22   # character budget for each half of a dual row, before the " | "
 STATS_X = 300
 ASCII_X = 40
 ROW_START = 40
+FONT_SIZE = 13    # one size everywhere, header included, so char-width math lines up pixel for
+                   # pixel and every row's right edge falls on the same column
 FONT = "Consolas, Menlo, monospace"
 
 DARK = {"bg": "#05070D", "text": "#FAFAFA", "key": "#ffa657", "value": "#5778DB", "dots": "#616e7f"}
 LIGHT = {"bg": "#FAFAFA", "text": "#05070D", "key": "#953800", "value": "#2445A8", "dots": "#8b93a7"}
 
 TAGLINE = [
-    "mood      shipping, not sleeping",
-    "status    rm -rf boring_tasks && automate",
+    ("mood", "shipping, not sleeping"),
+    ("status", "rm -rf boring_tasks && automate"),
 ]
 
 ROBOT_ART = [
@@ -66,25 +70,43 @@ def api(path):
         return json.loads(resp.read())
 
 
+def compute_streak(commit_dates: list[str]) -> int:
+    """Consecutive days up to today with at least one commit, London-naive (date component only)."""
+    days = {d[:10] for d in commit_dates}
+    streak = 0
+    cursor = datetime.now(timezone.utc).date()
+    while cursor.isoformat() in days:
+        streak += 1
+        cursor = cursor.fromordinal(cursor.toordinal() - 1)
+    return streak
+
+
 def gather_stats():
     user = api(f"/users/{USER}")
     repos = api(f"/users/{USER}/repos?per_page=100")
     gists = api(f"/users/{USER}/gists?per_page=100")
     prs = api(f"/search/issues?q=author:{USER}+type:pr")
     issues = api(f"/search/issues?q=author:{USER}+type:issue")
-    commits = api(f"/search/commits?q=author:{USER}")
+    commits = api(f"/search/commits?q=author:{USER}&per_page=100")
+
     created = datetime.fromisoformat(user["created_at"].replace("Z", "+00:00"))
     age_days = (datetime.now(timezone.utc) - created).days
+    contrib_repos = {item["repository_url"] for item in prs.get("items", [])}
+    commit_dates = [c["commit"]["author"]["date"] for c in commits.get("items", [])]
+
     return {
-        "repos": len(repos),
-        "forks": sum(1 for r in repos if r.get("fork")),
-        "gists": len(gists),
         "followers": user.get("followers", 0),
+        "stars": sum(r.get("stargazers_count", 0) for r in repos),
         "commits": commits.get("total_count", 0),
         "prs": prs.get("total_count", 0),
         "issues": issues.get("total_count", 0),
+        "reviews": 0,  # not available without GraphQL, and genuinely zero so far
+        "repos": len(repos),
+        "forks": sum(1 for r in repos if r.get("fork")),
+        "gists": len(gists),
+        "contribs": len(contrib_repos),
         "uptime": f"{age_days}d",
-        "kernel": "never sleeps, doesn't need to",
+        "streak": f"{compute_streak(commit_dates)}d",
     }
 
 
@@ -93,61 +115,68 @@ def key(t): return f'<tspan fill="{{key}}">{esc(t)}</tspan>'
 def val(t): return f'<tspan fill="{{value}}">{esc(t)}</tspan>'
 
 
-def half(label: str, value, width: int) -> str:
-    n = width - 2 - len(label) - 2 - 1 - len(str(value))
+def segment(label: str, value, width: int, leading_dot: bool) -> str:
+    """One 'LABEL: DOTS VALUE' segment, padded so it always spans exactly `width` chars.
+    Only the very first segment on a line gets the leading '. ', matching the main card,
+    where each full line starts with one dot, not one per label."""
+    n = width - len(label) - 2 - 1 - len(str(value)) - (2 if leading_dot else 0)
     dots = "." * max(1, n)
-    return cc(". ") + key(label) + cc(f": {dots} ") + val(str(value))
-
-
-def dual_row(y, l1, v1, l2, v2):
-    content = half(l1, v1, PAIR_WIDTH) + cc(" | ") + half(l2, v2, PAIR_WIDTH)
-    return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="13" xml:space="preserve">{content}</text>'
+    prefix = cc(". ") if leading_dot else ""
+    return prefix + key(label) + cc(f": {dots} ") + val(str(value))
 
 
 def full_row(y, label, value):
-    content = half(label, value, LINE_WIDTH)
-    return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="13" xml:space="preserve">{content}</text>'
+    content = segment(label, value, LINE_WIDTH, leading_dot=True)
+    return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{FONT_SIZE}" xml:space="preserve">{content}</text>'
 
 
-def text_row(y, content, size=13, weight="400", colour_key="text"):
-    return (f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{size}" xml:space="preserve" '
-            f'font-weight="{weight}" fill="{{{colour_key}}}">{esc(content)}</text>')
+def dual_row(y, l1, v1, l2, v2):
+    content = (segment(l1, v1, PAIR_WIDTH, leading_dot=True) + cc(" | ")
+               + segment(l2, v2, PAIR_WIDTH, leading_dot=False))
+    return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{FONT_SIZE}" xml:space="preserve">{content}</text>'
+
+
+def header_row(y, title):
+    dashes = "-" * (LINE_WIDTH - len(title) - 1)
+    return (f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{FONT_SIZE}" '
+            f'font-weight="700" fill="{{text}}" xml:space="preserve">{esc(title)} {esc(dashes)}</text>')
+
+
+def section_row(y, title):
+    dashes = "-" * (LINE_WIDTH - len(title) - 3)
+    return (f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{FONT_SIZE}" '
+            f'fill="{{text}}" xml:space="preserve">- {esc(title)} {esc(dashes)}</text>')
 
 
 def build_svg(mode: str, stats: dict) -> str:
     p = DARK if mode == "dark" else LIGHT
-    header = "zaccesssbot@github"
-    dashes = "-" * (LINE_WIDTH - len(header) - 1)
-    stats_header = "git stats"
-    stats_dashes = "-" * (LINE_WIDTH - len(stats_header) - 1)
 
     rows = []
     y = ROW_START
-    rows.append(text_row(y, f"{header} {dashes}", size=14, weight="700"))
+    rows.append(header_row(y, "zaccesssbot@github"))
     y += 26
-    for line in TAGLINE:
-        rows.append(full_row(y, *line.split(None, 1)))
+    for label, value in TAGLINE:
+        rows.append(full_row(y, label, value))
         y += 20
     y += 8
-    rows.append(text_row(y, f"- {stats_header} {stats_dashes}", colour_key="text"))
+    rows.append(section_row(y, "git stats"))
     y += 20
-    rows.append(dual_row(y, "repos", stats["repos"], "forks", stats["forks"]))
-    y += 20
-    rows.append(dual_row(y, "gists", stats["gists"], "followers", stats["followers"]))
-    y += 20
-    rows.append(dual_row(y, "commits", stats["commits"], "prs", stats["prs"]))
-    y += 20
-    rows.append(dual_row(y, "issues", stats["issues"], "uptime", stats["uptime"]))
-    y += 20
-    rows.append(full_row(y, "kernel", stats["kernel"]))
-    y += 20
+    for l1, v1, l2, v2 in [
+        ("followers", stats["followers"], "stars", stats["stars"]),
+        ("commits", stats["commits"], "prs", stats["prs"]),
+        ("issues", stats["issues"], "reviews", stats["reviews"]),
+        ("repos", stats["repos"], "forks", stats["forks"]),
+        ("gists", stats["gists"], "contribs", stats["contribs"]),
+        ("uptime", stats["uptime"], "streak", stats["streak"]),
+    ]:
+        rows.append(dual_row(y, l1, v1, l2, v2))
+        y += 20
 
     stats_bottom = y
     h = stats_bottom + 20
     w = 820
 
-    # scale the robot's line height so its total span matches the stats block exactly, so
-    # neither column runs on past the other or leaves a dead gap
+    # scale the robot's line height so its total span matches the stats block exactly
     art_span = stats_bottom - ROW_START
     art_step = art_span / (len(ROBOT_ART) - 1)
     robot = "".join(

@@ -40,15 +40,14 @@ TAGLINE = [
     ("Status", "rm -rf boring_tasks && automate"),
 ]
 
-ROBOT_ART_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "robot_ascii.txt")
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets")
 
 
-def load_robot_art() -> list[str]:
-    with open(ROBOT_ART_PATH, encoding="utf-8") as f:
+def load_robot_art(mode: str) -> list[str]:
+    path = os.path.join(ASSETS_DIR, f"robot_ascii-{mode}.txt")
+    with open(path, encoding="utf-8") as f:
         return f.read().splitlines()
 
-
-ROBOT_ART = load_robot_art()
 
 ROBOT_BASE_FONT_SIZE = 8  # base size before the fill-scale transform below
 ROBOT_BASE_STEP = 8       # base line height before the fill-scale transform below
@@ -207,6 +206,7 @@ def section_row(y, title):
 
 def build_svg(mode: str, stats: dict) -> str:
     p = DARK if mode == "dark" else LIGHT
+    robot_art = load_robot_art(mode)
 
     rows = []
     y = ROW_START
@@ -242,14 +242,14 @@ def build_svg(mode: str, stats: dict) -> str:
     # rather than only centred at a fixed size
     column_width = STATS_X - ASCII_X - 20
     available_height = stats_bottom - ROW_START
-    natural_width = len(ROBOT_ART[0]) * ROBOT_BASE_FONT_SIZE * 0.6
-    natural_height = (len(ROBOT_ART) - 1) * ROBOT_BASE_STEP
+    natural_width = max(len(line) for line in robot_art) * ROBOT_BASE_FONT_SIZE * 0.6
+    natural_height = (len(robot_art) - 1) * ROBOT_BASE_STEP
     scale_x = column_width / natural_width
     scale_y = available_height / natural_height
     rows_svg = "".join(
         f'<text x="0" y="{i * ROBOT_BASE_STEP}" font-family="{FONT}" font-size="{ROBOT_BASE_FONT_SIZE}" '
         f'fill="{{value}}" xml:space="preserve">{esc(line)}</text>'
-        for i, line in enumerate(ROBOT_ART)
+        for i, line in enumerate(robot_art)
     )
     robot = (f'<g transform="translate({ASCII_X},{ROW_START}) scale({scale_x:.4f},{scale_y:.4f})">'
               f'{rows_svg}</g>')

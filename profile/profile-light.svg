@@ -1,16 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="220" viewBox="0 0 760 220">
   <rect x="0" y="0" width="760" height="220" rx="16" fill="#FAFAFA"/>
-  
-  <g transform="translate(54.8,58.4) scale(1.6)">
-    <line x1="22" y1="0" x2="22" y2="8" stroke="#2445A8" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="22" cy="-3" r="4.5" fill="#2445A8"/>
-    <rect x="0" y="10" width="44" height="38" rx="12" fill="#2445A8"/>
-    <rect x="-7" y="22" width="7" height="14" rx="3.5" fill="#2445A8"/>
-    <rect x="44" y="22" width="7" height="14" rx="3.5" fill="#2445A8"/>
-    <circle cx="13" cy="29" r="5.5" fill="#FAFAFA"/>
-    <circle cx="31" cy="29" r="5.5" fill="#FAFAFA"/>
-    <rect x="12" y="40" width="20" height="5" rx="2.5" fill="#FAFAFA"/>
-  </g>
+  <text x="40" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">    ___     </text><text x="40" y="88" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">   [o o]    </text><text x="40" y="106" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">  /|___|\   </text><text x="40" y="124" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve"> (_/   \_)  </text><text x="40" y="142" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">   |_ _|    </text><text x="40" y="160" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">  _/   \_   </text>
   <text x="200" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16"
         font-weight="700" fill="#05070D">zaccesssbot@github</text>
   <line x1="200" y1="46" x2="620" y2="46" stroke="#5A6178" stroke-opacity="0.35"/>

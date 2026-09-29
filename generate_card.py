@@ -22,8 +22,9 @@ USER = "zaccesssbot"
 TOKEN = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
 
 SVG_WIDTH = 1120  # same canvas width as zaccesss/zaccesss's own card
-LINE_WIDTH = 70   # character budget for a full row; same as the main card, every value ends here
-PAIR_WIDTH = 34   # character budget for each half of a dual row, before the " | "
+LINE_WIDTH = 70    # character budget for a full row; same as the main card, every value ends here
+PAIR_LEFT = 34     # left half's budget in a dual row
+PAIR_RIGHT = 33    # right half's budget; 34 + 33 + 3 (" | ") = 70, matching LINE_WIDTH exactly
 STATS_X = 410     # same column as the main card
 ASCII_X = 35      # same column as the main card
 ROW_START = 40
@@ -35,15 +36,8 @@ DARK = {"bg": "#05070D", "text": "#FAFAFA", "key": "#ffa657", "value": "#5778DB"
 LIGHT = {"bg": "#FAFAFA", "text": "#05070D", "key": "#953800", "value": "#2445A8", "dots": "#8b93a7", "add": "#1a7f37", "delete": "#cf222e"}
 
 TAGLINE = [
-    ("mood", "shipping, not sleeping"),
-    ("status", "rm -rf boring_tasks && automate"),
-]
-
-CONTACT = [
-    ("main", "github.com/zaccesss"),
-    ("site", "isaacadjei.me"),
-    ("email", "automation@isaacadjei.me"),
-    ("about", "github.com/zaccesssbot/.github"),
+    ("Mood", "shipping, not sleeping"),
+    ("Status", "rm -rf boring_tasks && automate"),
 ]
 
 ROBOT_ART = [
@@ -60,8 +54,10 @@ ROBOT_ART = [
     "      |     |      ",
     "      |_____|      ",
 ]
-ROBOT_STEP = 16  # fixed natural line height at font-size 11, not stretched to fit the stats
-                 # block, since distorting it breaks the parens' and corners' alignment
+ROBOT_FONT_SIZE = 22  # big enough that the art fills a real share of the card, not a small
+                       # glyph lost in the left column
+ROBOT_STEP = 30        # fixed natural line height at ROBOT_FONT_SIZE, not stretched to fit the
+                        # stats block, since distorting it breaks the parens' and corners' alignment
 
 
 def api(path):
@@ -89,15 +85,25 @@ def compute_loc(repos: list[dict]) -> tuple[int, int]:
     return additions, deletions
 
 
-def compute_streak(commit_dates: list[str]) -> int:
-    """Consecutive days up to today with at least one commit, London-naive (date component only)."""
-    days = {d[:10] for d in commit_dates}
-    streak = 0
+def compute_streak(commit_dates: list[str]) -> tuple[int, int]:
+    """(current, best) consecutive-day streaks with at least one commit. Best is the longest
+    run anywhere in the fetched history, not just the one ending today."""
+    days = sorted({d[:10] for d in commit_dates})
+    if not days:
+        return 0, 0
+    best = run = 1
+    for i in range(1, len(days)):
+        prev = datetime.fromisoformat(days[i - 1]).date()
+        cur = datetime.fromisoformat(days[i]).date()
+        run = run + 1 if (cur - prev).days == 1 else 1
+        best = max(best, run)
+    current = 0
     cursor = datetime.now(timezone.utc).date()
-    while cursor.isoformat() in days:
-        streak += 1
+    day_set = set(days)
+    while cursor.isoformat() in day_set:
+        current += 1
         cursor = cursor.fromordinal(cursor.toordinal() - 1)
-    return streak
+    return current, best
 
 
 def gather_stats():
@@ -113,6 +119,7 @@ def gather_stats():
     contrib_repos = {item["repository_url"] for item in prs.get("items", [])}
     commit_dates = [c["commit"]["author"]["date"] for c in commits.get("items", [])]
     additions, deletions = compute_loc(repos)
+    current_streak, best_streak = compute_streak(commit_dates)
 
     return {
         "followers": user.get("followers", 0),
@@ -126,7 +133,8 @@ def gather_stats():
         "gists": len(gists),
         "contribs": len(contrib_repos),
         "uptime": f"{age_days}d",
-        "streak": f"{compute_streak(commit_dates)}d",
+        "streak": f"{current_streak}d",
+        "best_streak": f"{best_streak}d",
         "loc_add": additions,
         "loc_del": deletions,
     }
@@ -153,20 +161,39 @@ def full_row(y, label, value):
 
 
 def dual_row(y, l1, v1, l2, v2):
-    content = (segment(l1, v1, PAIR_WIDTH, leading_dot=True) + cc(" | ")
-               + segment(l2, v2, PAIR_WIDTH, leading_dot=False))
+    content = (segment(l1, v1, PAIR_LEFT, leading_dot=True) + cc(" | ")
+               + segment(l2, v2, PAIR_RIGHT, leading_dot=False))
     return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{FONT_SIZE}" xml:space="preserve">{content}</text>'
 
 
 def loc_row(y, additions, deletions):
     total = additions - deletions  # net change, matching the main card's own number exactly
-    label = "lines of code"
+    label = "Lines of Code"
     lead = f"{total:,}"
-    n = LINE_WIDTH - len(label) - 2 - 1 - len(lead) - 2 - len(f"{additions:,}++, {deletions:,}--")
+    add_str, del_str = f"{additions:,}", f"{deletions:,}"
+    # measure the real plain text width (tspan tags add no visual width) so dots land the
+    # closing brace on the same LINE_WIDTH column as every other row, main included
+    prefix = f". {label}: "
+    suffix = f" | {{ {add_str}++, {del_str}-- }}"
+    n = LINE_WIDTH - len(prefix) - len(lead) - len(suffix)
     dots = "." * max(1, n)
-    content = (cc(". ") + key(label) + cc(f": {dots} ") + val(lead) + cc(" { ")
-               + f'<tspan fill="{{add}}">{additions:,}++</tspan>' + cc(", ")
-               + f'<tspan fill="{{delete}}">{deletions:,}--</tspan>' + cc(" }"))
+    content = (cc(". ") + key(label) + cc(f": {dots} ") + val(lead) + cc(" | { ")
+               + f'<tspan fill="{{add}}">{add_str}++</tspan>' + cc(", ")
+               + f'<tspan fill="{{delete}}">{del_str}--</tspan>' + cc(" }"))
+    return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{FONT_SIZE}" xml:space="preserve">{content}</text>'
+
+
+def bracket_row(y, l1, v1, l2, v2, sub_label, sub_value, left_width, right_width):
+    """'. LABEL1: DOTS V1 | LABEL2: DOTS V2 {SUB: SUBVAL}', main's own dual_row_detail shape,
+    measured against plain text so the closing brace lands on left_width+right_width+3 exactly."""
+    left = segment(l1, v1, left_width, leading_dot=True)
+    prefix2 = f"{l2}: "
+    suffix2 = f" {{{sub_label}: {sub_value}}}"
+    n2 = right_width - len(prefix2) - len(str(v2)) - len(suffix2)
+    dots2 = "." * max(1, n2)
+    right = (key(l2) + cc(f": {dots2} ") + val(str(v2)) + cc(" {")
+             + key(sub_label) + cc(": ") + val(str(sub_value)) + cc("}"))
+    content = left + cc(" | ") + right
     return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{FONT_SIZE}" xml:space="preserve">{content}</text>'
 
 
@@ -193,24 +220,20 @@ def build_svg(mode: str, stats: dict) -> str:
         rows.append(full_row(y, label, value))
         y += 20
     y += 8
-    rows.append(section_row(y, "contact"))
-    y += 20
-    for label, value in CONTACT:
-        rows.append(full_row(y, label, value))
-        y += 20
-    y += 8
-    rows.append(section_row(y, "git stats"))
+    rows.append(section_row(y, "Git Stats"))
     y += 20
     for l1, v1, l2, v2 in [
-        ("followers", stats["followers"], "stars", stats["stars"]),
-        ("commits", stats["commits"], "prs", stats["prs"]),
-        ("issues", stats["issues"], "reviews", stats["reviews"]),
-        ("repos", stats["repos"], "forks", stats["forks"]),
-        ("gists", stats["gists"], "contribs", stats["contribs"]),
-        ("uptime", stats["uptime"], "streak", stats["streak"]),
+        ("Followers", stats["followers"], "Stars", stats["stars"]),
+        ("Commits", stats["commits"], "PRs", stats["prs"]),
+        ("Issues", stats["issues"], "Reviews", stats["reviews"]),
+        ("Repos", stats["repos"], "Forks", stats["forks"]),
+        ("Gists", stats["gists"], "Contribs", stats["contribs"]),
     ]:
         rows.append(dual_row(y, l1, v1, l2, v2))
         y += 20
+    rows.append(bracket_row(y, "Uptime", stats["uptime"], "Streak", stats["streak"],
+                             "Best", stats["best_streak"], PAIR_LEFT, PAIR_RIGHT))
+    y += 20
     rows.append(loc_row(y, stats["loc_add"], stats["loc_del"]))
     y += 20
 
@@ -222,8 +245,13 @@ def build_svg(mode: str, stats: dict) -> str:
     # parens/corners alignment), vertically centred in the available space instead
     art_total = (len(ROBOT_ART) - 1) * ROBOT_STEP
     art_start = ROW_START + max(0, ((stats_bottom - ROW_START) - art_total) / 2)
+    # horizontally centred in the column too: every ROBOT_ART line is the same character
+    # count, so one x offset for the whole block is enough
+    column_width = STATS_X - ASCII_X - 20
+    block_width = len(ROBOT_ART[0]) * ROBOT_FONT_SIZE * 0.6
+    art_x = ASCII_X + max(0, (column_width - block_width) / 2)
     robot = "".join(
-        f'<text x="{ASCII_X}" y="{art_start + i * ROBOT_STEP:.1f}" font-family="{FONT}" font-size="11" '
+        f'<text x="{art_x:.1f}" y="{art_start + i * ROBOT_STEP:.1f}" font-family="{FONT}" font-size="{ROBOT_FONT_SIZE}" '
         f'fill="{{value}}" xml:space="preserve">{esc(line)}</text>'
         for i, line in enumerate(ROBOT_ART)
     )

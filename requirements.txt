@@ -1,0 +1,2 @@
+# generate_card.py uses only the Python standard library (json, os, urllib.request, datetime,
+# html). Nothing to pin here; this file exists for structural parity with zaccesss/zaccesss.

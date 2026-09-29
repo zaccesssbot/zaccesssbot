@@ -17,14 +17,6 @@ PALETTE = {
     "light": {"tile": "#FAFAFA", "accent": "#2445A8", "text": "#05070D", "muted": "#5A6178"},
 }
 
-TYPING_LINES = [
-    "automating the boring bits...",
-    "runs on cron, not caffeine...",
-    "on behalf of @zaccesss...",
-    "beep boop, shipping commits...",
-]
-
-
 def api(path):
     req = urllib.request.Request(f"https://api.github.com{path}")
     if TOKEN:
@@ -67,22 +59,9 @@ def robot_glyph(x, y, colour):
     )
 
 
-def typing_rotator(x, y, colour, lines, dur_each=3):
-    total = dur_each * len(lines)
-    texts = []
-    for i, line in enumerate(lines):
-        begin = i * dur_each
-        texts.append(f"""
-    <text x="{x}" y="{y}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="{colour}" opacity="0">{line}
-      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.85;1"
-               dur="{total}s" begin="{begin}s" repeatCount="indefinite"/>
-    </text>""")
-    return "".join(texts)
-
-
 def build_svg(mode: str, stats: dict) -> str:
     p = PALETTE[mode]
-    w, h = 760, 220
+    w, h = 760, 190
     lines = [
         f"repos     {stats['repos']}",
         f"forks     {stats['forks']}",
@@ -103,7 +82,6 @@ def build_svg(mode: str, stats: dict) -> str:
         font-weight="700" fill="{p['text']}">zaccesssbot@github</text>
   <line x1="200" y1="46" x2="620" y2="46" stroke="{p['muted']}" stroke-opacity="0.35"/>
   {info_rows}
-  {typing_rotator(200, 195, p['accent'], TYPING_LINES)}
 </svg>"""
 
 

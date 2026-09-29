@@ -1,25 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="220" viewBox="0 0 760 220">
-  <rect x="0" y="0" width="760" height="220" rx="16" fill="#FAFAFA"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="190" viewBox="0 0 760 190">
+  <rect x="0" y="0" width="760" height="190" rx="16" fill="#FAFAFA"/>
   <text x="40" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">    ___     </text><text x="40" y="88" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">   [o o]    </text><text x="40" y="106" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">  /|___|\   </text><text x="40" y="124" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve"> (_/   \_)  </text><text x="40" y="142" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">   |_ _|    </text><text x="40" y="160" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2445A8" xml:space="preserve">  _/   \_   </text>
   <text x="200" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16"
         font-weight="700" fill="#05070D">zaccesssbot@github</text>
   <line x1="200" y1="46" x2="620" y2="46" stroke="#5A6178" stroke-opacity="0.35"/>
   <text x="200" y="58" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#5A6178">repos     2</text><text x="200" y="78" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#5A6178">forks     0</text><text x="200" y="98" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#5A6178">gists     0</text><text x="200" y="118" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#5A6178">followers 1</text><text x="200" y="138" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#5A6178">uptime    0d</text><text x="200" y="158" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#5A6178">kernel    never sleeps, doesn't need to</text>
-  
-    <text x="200" y="195" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#2445A8" opacity="0">automating the boring bits...
-      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.85;1"
-               dur="12s" begin="0s" repeatCount="indefinite"/>
-    </text>
-    <text x="200" y="195" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#2445A8" opacity="0">runs on cron, not caffeine...
-      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.85;1"
-               dur="12s" begin="3s" repeatCount="indefinite"/>
-    </text>
-    <text x="200" y="195" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#2445A8" opacity="0">on behalf of @zaccesss...
-      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.85;1"
-               dur="12s" begin="6s" repeatCount="indefinite"/>
-    </text>
-    <text x="200" y="195" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#2445A8" opacity="0">beep boop, shipping commits...
-      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.85;1"
-               dur="12s" begin="9s" repeatCount="indefinite"/>
-    </text>
 </svg>

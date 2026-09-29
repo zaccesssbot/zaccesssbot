@@ -1,10 +1,11 @@
-# refreshes the profile card's live stats daily. Uses the run's own built in token, this repo
-# needs no separate secret since it only ever reads public stats and pushes to itself.
+# refreshes the profile card's live stats four times a day. Uses ACCESS_TOKEN (a classic PAT
+# with public_repo scope) rather than the run's own built in token, since the built in token
+# cannot read this account's gists (403 on that endpoint specifically).
 name: Update profile card
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "0 0,6,12,18 * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +24,7 @@ jobs:
       - name: Generate
         run: python generate_card.py
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
 
       - name: Commit if changed
         run: |

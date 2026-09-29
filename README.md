@@ -1,10 +1,10 @@
 <p align="center">
   &bull;&nbsp;
+  <a href="https://github.com/zaccesssbot/.github">About</a>
+  &nbsp;&bull;&nbsp;
   <a href="https://github.com/zaccesss">Main</a>
   &nbsp;&bull;&nbsp;
   <a href="https://isaacadjei.me">Site</a>
-  &nbsp;&bull;&nbsp;
-  <a href="https://github.com/zaccesssbot/.github">About</a>
 </p>
 
 <picture>

@@ -12,5 +12,3 @@
   <source media="(prefers-color-scheme: light)" srcset="profile/profile-light.svg?v=18">
   <img alt="zaccesssbot" src="profile/profile-dark.svg?v=18" width="100%">
 </picture>
-
-<p align="center"><strong>Something looks wrong?</strong> Reach out at <a href="mailto:automation@isaacadjei.me">automation@isaacadjei.me</a>.</p>

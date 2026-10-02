@@ -33,9 +33,11 @@ jobs:
         run: sed -i -E "s/(profile-(dark|light)\.svg)\?v=[0-9]+/\1?v=${{ github.run_number }}/g" README.md
 
       - name: Commit if changed
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
           umask 077
-          echo "${{ secrets.SIGNING_KEY }}" > /tmp/signing_key
+          printf '%s\n' "$SIGNING_KEY" > /tmp/signing_key
           chmod 600 /tmp/signing_key
           git config user.name "zaccesssbot"
           git config user.email "automation@isaacadjei.me"

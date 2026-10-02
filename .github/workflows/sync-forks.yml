@@ -1,0 +1,51 @@
+# keeps this account's forks in step with the repositories they were forked from. A fork never
+# updates itself, so once a night each fork's default branch is reset to the upstream tip. A reset
+# rather than a merge keeps every fork an exact copy of upstream with no merge commits of its own.
+# ACCESS_TOKEN is the same classic PAT the profile card uses; its public_repo scope covers writing
+# to the forks, which are all public.
+
+name: Sync forks
+
+on:
+  schedule:
+    - cron: "33 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Reset every fork to its upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Reset the forks
+        env:
+          GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          synced=0; current=0; failed=0
+          for fork in $(gh api --paginate "user/repos?affiliation=owner&per_page=100" --jq '.[] | select(.fork) | .name'); do
+            read -r parent branch < <(gh api "repos/zaccesssbot/$fork" --jq '[.parent.full_name, .parent.default_branch] | @tsv' | tr '\t' ' ')
+            if [ -z "$parent" ]; then
+              echo "::warning::$fork: upstream not readable, skipped"
+              failed=$((failed + 1))
+              continue
+            fi
+            upstream=$(gh api "repos/$parent/commits/$branch" --jq .sha)
+            mine=$(gh api "repos/zaccesssbot/$fork/commits/$branch" --jq .sha 2>/dev/null || echo none)
+            if [ "$upstream" = "$mine" ]; then
+              current=$((current + 1))
+              continue
+            fi
+            if gh api -X PATCH "repos/zaccesssbot/$fork/git/refs/heads/$branch" -f sha="$upstream" -F force=true --silent; then
+              echo "$fork: ${mine:0:7} -> ${upstream:0:7}"
+              synced=$((synced + 1))
+            else
+              echo "::warning::$fork: reset failed"
+              failed=$((failed + 1))
+            fi
+          done
+          echo "Forks reset: $synced. Already current: $current. Failed: $failed." >> "$GITHUB_STEP_SUMMARY"
+          [ "$failed" -eq 0 ]

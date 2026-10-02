@@ -1,6 +1,10 @@
 # keeps this account's forks in step with the repositories they were forked from. A fork never
-# updates itself, so once a night each fork's default branch is reset to the upstream tip. A reset
-# rather than a merge keeps every fork an exact copy of upstream with no merge commits of its own.
+# updates itself, so every six hours each fork's default branch is reset to the upstream tip. A
+# reset rather than a merge keeps every fork an exact copy of upstream with no merge commits of its
+# own. The schedule sits half an hour after each card refresh, away from the top of the hour where
+# GitHub's scheduler is busiest. A skipped run costs nothing because the next one catches up.
+# A fork also keeps the description and homepage it was created with and never inherits topics,
+# so those are copied from upstream whenever they differ.
 # ACCESS_TOKEN is the same classic PAT the profile card uses; its public_repo scope covers writing
 # to the forks, which are all public.
 
@@ -8,7 +12,7 @@ name: Sync forks
 
 on:
   schedule:
-    - cron: "33 3 * * *"
+    - cron: "33 0,6,12,18 * * *"
   workflow_dispatch:
 
 permissions:
@@ -25,27 +29,79 @@ jobs:
           GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           set -euo pipefail
-          synced=0; current=0; failed=0
-          for fork in $(gh api --paginate "user/repos?affiliation=owner&per_page=100" --jq '.[] | select(.fork) | .name'); do
-            read -r parent branch < <(gh api "repos/zaccesssbot/$fork" --jq '[.parent.full_name, .parent.default_branch] | @tsv' | tr '\t' ' ')
+          synced=0; current=0; metadata=0; archived=0; failed=0
+          # listed up front, outside the loop, so a failing call stops the job instead of looping zero times
+          forks=$(gh api --paginate "user/repos?affiliation=owner&per_page=100" --jq '.[] | select(.fork) | .name')
+          if [ -z "$forks" ]; then
+            echo "::error::no forks listed, check that ACCESS_TOKEN is still valid"
+            exit 1
+          fi
+          # every call inside the loop is guarded, so one bad fork is counted as failed and the rest still run
+          for fork in $forks; do
+            if ! info=$(gh api "repos/zaccesssbot/$fork"); then
+              echo "::warning::$fork: lookup failed"
+              failed=$((failed + 1))
+              continue
+            fi
+            # an archived fork is read only, like the archived upstream it mirrors, so it is left as it is
+            if [ "$(echo "$info" | jq -r .archived)" = "true" ]; then
+              archived=$((archived + 1))
+              continue
+            fi
+            parent=$(echo "$info" | jq -r '.parent.full_name // empty')
+            branch=$(echo "$info" | jq -r '.parent.default_branch // empty')
             if [ -z "$parent" ]; then
               echo "::warning::$fork: upstream not readable, skipped"
               failed=$((failed + 1))
               continue
             fi
-            upstream=$(gh api "repos/$parent/commits/$branch" --jq .sha)
+            if ! upstream=$(gh api "repos/$parent/commits/$branch" --jq .sha); then
+              echo "::warning::$fork: tip of $parent $branch not readable"
+              failed=$((failed + 1))
+              continue
+            fi
             mine=$(gh api "repos/zaccesssbot/$fork/commits/$branch" --jq .sha 2>/dev/null || echo none)
             if [ "$upstream" = "$mine" ]; then
               current=$((current + 1))
-              continue
-            fi
-            if gh api -X PATCH "repos/zaccesssbot/$fork/git/refs/heads/$branch" -f sha="$upstream" -F force=true --silent; then
+            elif [ "$mine" = none ]; then
+              # upstream renamed its default branch after the fork was made: create it on the fork and make it the default
+              if gh api -X POST "repos/zaccesssbot/$fork/git/refs" -f ref="refs/heads/$branch" -f sha="$upstream" --silent \
+                && gh api -X PATCH "repos/zaccesssbot/$fork" -f default_branch="$branch" --silent; then
+                echo "$fork: created $branch at ${upstream:0:7}"
+                synced=$((synced + 1))
+              else
+                echo "::warning::$fork: could not create $branch"
+                failed=$((failed + 1))
+              fi
+            elif gh api -X PATCH "repos/zaccesssbot/$fork/git/refs/heads/$branch" -f sha="$upstream" -F force=true --silent; then
               echo "$fork: ${mine:0:7} -> ${upstream:0:7}"
               synced=$((synced + 1))
             else
               echo "::warning::$fork: reset failed"
               failed=$((failed + 1))
             fi
+            want=$(echo "$info" | jq -c '{description: (.parent.description // ""), homepage: (.parent.homepage // "")}')
+            have=$(echo "$info" | jq -c '{description: (.description // ""), homepage: (.homepage // "")}')
+            if [ "$want" != "$have" ]; then
+              if echo "$want" | gh api -X PATCH "repos/zaccesssbot/$fork" --input - --silent; then
+                echo "$fork: description and homepage copied from $parent"
+                metadata=$((metadata + 1))
+              else
+                echo "::warning::$fork: description and homepage copy failed"
+                failed=$((failed + 1))
+              fi
+            fi
+            topics_want=$(echo "$info" | jq -c '{names: ((.parent.topics // []) | sort)}')
+            topics_have=$(echo "$info" | jq -c '{names: ((.topics // []) | sort)}')
+            if [ "$topics_want" != "$topics_have" ]; then
+              if echo "$topics_want" | gh api -X PUT "repos/zaccesssbot/$fork/topics" --input - --silent; then
+                echo "$fork: topics copied from $parent"
+                metadata=$((metadata + 1))
+              else
+                echo "::warning::$fork: topics copy failed"
+                failed=$((failed + 1))
+              fi
+            fi
           done
-          echo "Forks reset: $synced. Already current: $current. Failed: $failed." >> "$GITHUB_STEP_SUMMARY"
+          echo "Forks reset: $synced. Already current: $current. Metadata copied: $metadata. Archived and left alone: $archived. Failed: $failed." >> "$GITHUB_STEP_SUMMARY"
           [ "$failed" -eq 0 ]

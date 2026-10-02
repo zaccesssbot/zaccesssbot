@@ -8,7 +8,7 @@
 </p>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="profile/profile-dark.svg?v=18">
-  <source media="(prefers-color-scheme: light)" srcset="profile/profile-light.svg?v=18">
-  <img alt="zaccesssbot" src="profile/profile-dark.svg?v=18" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="profile/profile-dark.svg?v=19">
+  <source media="(prefers-color-scheme: light)" srcset="profile/profile-light.svg?v=19">
+  <img alt="zaccesssbot" src="profile/profile-dark.svg?v=19" width="100%">
 </picture>

@@ -4,8 +4,8 @@
 Modelled on zaccesss/zaccesss's own card: the same dot-filled rows, the same paired rows and the
 same Git Stats grouping, read through the same GraphQL fields, so a number means the same thing on
 both cards. Scoped to what this account is, an automation account, so the identity rows say what
-it runs on and the Jobs section says what it does. The left column carries the robot avatar as
-ASCII art with a caption, scaled to fill the column whose height the stats set.
+it runs on. The left column carries the robot avatar as ASCII art, scaled to fill the column whose
+height the stats set.
 """
 
 import datetime as dt
@@ -27,11 +27,14 @@ STATS_X = 410      # left edge of the stats column, same as the main card
 ASCII_X = 35       # left edge of the art column, same as the main card
 ROW_START = 40
 ROW_STEP = 20
-FONT_SIZE = 13     # one size everywhere, so char-width maths lines up pixel for pixel
+STATS_FONT_SIZE = 16  # the main card's row size: 70 chars at 16px end 38px short of the right edge, matching the left margin
+ART_FONT_SIZE = 13    # the art's natural size before scaling, the main card's portrait size
 FONT = "Consolas, Menlo, monospace"
-CHAR_WIDTH = FONT_SIZE * 0.6   # advance width of the monospace fonts above at this size
-ART_STEP = 13                  # the art's line height; with CHAR_WIDTH it gives near-square cells
+CHAR_WIDTH = ART_FONT_SIZE * 0.6   # advance width of the monospace fonts above at the art's size
+ART_STEP = 13                      # the art's line height; with CHAR_WIDTH it gives near-square cells
 ART_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "robot_ascii.txt")
+# commit subjects whose diffs are generated output rather than code, left out of Lines of Code
+GENERATED_SUBJECTS = ("chore: update metadata backup", "chore: refresh profile card")
 
 DARK = {"bg": "#05070D", "text": "#FAFAFA", "key": "#ffa657", "value": "#5778DB", "dots": "#616e7f", "add": "#3fb950", "delete": "#f85149"}
 LIGHT = {"bg": "#FAFAFA", "text": "#05070D", "key": "#953800", "value": "#2445A8", "dots": "#8b93a7", "add": "#1a7f37", "delete": "#cf222e"}
@@ -39,29 +42,15 @@ LIGHT = {"bg": "#FAFAFA", "text": "#05070D", "key": "#953800", "value": "#2445A8
 IDENTITY = [
     ("Host", "github.com/zaccesssbot"),
     ("Owner", "zaccesss (Isaac Adjei)"),
-    ("Role", "automation account for Isaac's repositories"),
-    ("Runs on", "GitHub Actions, Cloudflare Workers"),
     ("Mood", "shipping, not sleeping"),
     ("Status", "rm -rf boring_tasks && automate"),
-]
-JOBS = [
-    ("Forks", "every public repo, reset to upstream nightly"),
-    ("Sync", "solutions into competitive-programming"),
-    ("Backups", "issues, PRs and releases, every three days"),
-    ("Publish", "the isaacadjei.me showcase copy"),
-    ("Cards", "this profile and the main one, four times a day"),
-    ("Copies", "PHAEMOS, MELOPHOS and LidarSAT components"),
+    ("Runs on", "GitHub Actions, Cloudflare Workers"),
+    ("Role", "automation account for Isaac's repositories"),
 ]
 CONTACT = [
-    ("Email", "automation@isaacadjei.me"),
-    ("Main", "github.com/zaccesss"),
     ("Site", "isaacadjei.me"),
-]
-CAPTION = [
-    ("text", "zaccesssbot"),
-    ("dots", "automation account for zaccesss"),
-    ("dots", "forks, syncs, backups and cards"),
-    ("dots", "github.com/zaccesssbot"),
+    ("Main", "github.com/zaccesss"),
+    ("Email", "automation@isaacadjei.me"),
 ]
 
 
@@ -169,6 +158,11 @@ def get_contributions(created_at: str) -> tuple[int, int, int, int, int]:
         total += t
         days += d
     days.sort()
+    # the account's commits keep their original dates once history is credited to it, so the calendar
+    # reaches back before the account existed. A streak is days of activity in a row, which cannot
+    # start before the account did, so only days from its creation count towards it.
+    created = created_at[:10]
+    days = [(day, count) for day, count in days if day >= created]
     today = dt.date.today().isoformat()
     best = run = 0
     for day, count in days:
@@ -185,13 +179,18 @@ def get_contributions(created_at: str) -> tuple[int, int, int, int, int]:
         if count <= 0:
             break
         current += 1
-    return commits, reviews, total, current, best
+    # the streak counts calendar days with the creation day and today both included, so an unbroken
+    # run since creation is one more than the uptime's whole days. The cap holds it to the uptime figure.
+    age = (dt.date.today() - dt.date.fromisoformat(created)).days
+    return commits, reviews, total, min(current, age), min(best, age)
 
 
 def get_loc(user_id: str) -> tuple[int, int]:
     """(additions, deletions) over every commit this account authored on the default branch of a
-    repository it has committed to, forks excluded. Metadata backups are skipped so their JSON
-    dumps never count as code."""
+    repository it has committed to, forks excluded. Metadata backups and profile card refreshes are
+    skipped, so JSON dumps and regenerated SVGs never count as code. In an organisation only the
+    monorepo counts: the component repositories are published copies of it, credited to this
+    account, so counting them would count the same code again as if the bot had written it."""
     repos = []
     cursor = None
     while True:
@@ -204,7 +203,13 @@ def get_loc(user_id: str) -> tuple[int, int]:
                     }
                 }
             }""", {"login": USER, "cursor": cursor})["user"]["repositoriesContributedTo"]
-        repos += [n["nameWithOwner"] for n in data["nodes"] if not n["isFork"] and n["defaultBranchRef"]]
+        for n in data["nodes"]:
+            if n["isFork"] or not n["defaultBranchRef"]:
+                continue
+            owner, name = n["nameWithOwner"].split("/", 1)
+            if owner.lower() != USER.lower() and not owner.startswith("zaccesss") and name.lower() != owner.lower():
+                continue  # an organisation repository other than its monorepo is a published copy
+            repos.append(n["nameWithOwner"])
         if not data["pageInfo"]["hasNextPage"]:
             break
         cursor = data["pageInfo"]["endCursor"]
@@ -233,7 +238,7 @@ def get_loc(user_id: str) -> tuple[int, int]:
             while True:
                 h = graphql(history_q, {"owner": owner, "name": name, "id": user_id, "cursor": cursor})["repository"]["defaultBranchRef"]["target"]["history"]
                 for c in h["nodes"]:
-                    if c["messageHeadline"] == "chore: update metadata backup":
+                    if c["messageHeadline"].startswith(GENERATED_SUBJECTS):
                         continue
                     add += c["additions"]
                     delete += c["deletions"]
@@ -280,7 +285,7 @@ def val(t): return f'<tspan fill="{{value}}">{esc(t)}</tspan>'
 
 
 def text(y: int, content: str, extra: str = "") -> str:
-    return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{FONT_SIZE}"{extra} xml:space="preserve">{content}</text>'
+    return f'<text x="{STATS_X}" y="{y}" font-family="{FONT}" font-size="{STATS_FONT_SIZE}"{extra} xml:space="preserve">{content}</text>'
 
 
 def segment(label: str, value, width: int, leading_dot: bool) -> str:
@@ -316,7 +321,8 @@ def bracket_row(y, l1, v1, l2, v2, sub_label, sub_value):
     """'. L1: DOTS V1 | L2: DOTS V2 {SUB: SUBVAL}', the main card's detail row shape."""
     left = segment(l1, v1, PAIR_LEFT, leading_dot=True)
     suffix = f" {{{sub_label}: {sub_value}}}"
-    n = PAIR_RIGHT - len(f"{l2}: ") - len(str(v2)) - len(suffix)
+    # the budget also pays for the space between the dots and the value, like segment() does
+    n = PAIR_RIGHT - len(f"{l2}: ") - 1 - len(str(v2)) - len(suffix)
     right = (key(l2) + cc(f": {'.' * max(1, n)} ") + val(str(v2)) + cc(" {") + key(sub_label) + cc(": ") + val(str(sub_value)) + cc("}"))
     return text(y, left + cc(" | ") + right)
 
@@ -351,13 +357,12 @@ def build_svg(mode: str, stats: dict) -> str:
     for label, value in IDENTITY:
         rows.append(full_row(y, label, value))
         y += ROW_STEP
-    for title, items in (("Jobs", JOBS), ("Contact", CONTACT)):
-        y += 8
-        rows.append(section_row(y, title))
+    y += 8
+    rows.append(section_row(y, "Contact"))
+    y += ROW_STEP
+    for label, value in CONTACT:
+        rows.append(full_row(y, label, value))
         y += ROW_STEP
-        for label, value in items:
-            rows.append(full_row(y, label, value))
-            y += ROW_STEP
     y += 8
     rows.append(section_row(y, "Git Stats"))
     y += ROW_STEP
@@ -376,31 +381,22 @@ def build_svg(mode: str, stats: dict) -> str:
     stats_bottom = y
     height = stats_bottom + ROW_STEP + 10
 
-    # the art is scaled to the column width and sits, with its caption, centred on the column's
-    # height, so the two halves of the card read as one block whatever the stats add up to
+    # the art is scaled to the column width and sits centred on the column's height, so the two
+    # halves of the card read as one block whatever the stats add up to
     art = load_art()
     column_width = STATS_X - ASCII_X - 20
-    column_top, column_bottom = ROW_START - FONT_SIZE, stats_bottom
+    column_top, column_bottom = ROW_START - STATS_FONT_SIZE, stats_bottom
     natural_width = len(art[0]) * CHAR_WIDTH
     scale = column_width / natural_width
     art_height = len(art) * ART_STEP * scale
-    caption_height = len(CAPTION) * ROW_STEP
-    block_height = art_height + ROW_STEP + caption_height
-    top = column_top + max(0, (column_bottom - column_top - block_height) / 2)
+    top = column_top + max(0, (column_bottom - column_top - art_height) / 2)
     art_svg = "".join(
-        f'<text x="0" y="{(i + 1) * ART_STEP}" font-family="{FONT}" font-size="{FONT_SIZE}" fill="{{value}}" xml:space="preserve">{esc(line)}</text>'
+        f'<text x="0" y="{(i + 1) * ART_STEP}" font-family="{FONT}" font-size="{ART_FONT_SIZE}" fill="{{value}}" xml:space="preserve">{esc(line)}</text>'
         for i, line in enumerate(art)
     )
     art_group = f'<g transform="translate({ASCII_X},{top:.1f}) scale({scale:.4f})">{art_svg}</g>'
-    caption_width = max(len(t) for _, t in CAPTION) * CHAR_WIDTH
-    caption_x = ASCII_X + (column_width - caption_width) / 2
-    caption_svg = "".join(
-        f'<text x="{caption_x:.1f}" y="{top + art_height + ROW_STEP + (i + 1) * ROW_STEP:.1f}" font-family="{FONT}" font-size="{FONT_SIZE}" '
-        f'fill="{{{colour}}}"{" font-weight=\"700\"" if colour == "text" else ""} xml:space="preserve">{esc(t)}</text>'
-        for i, (colour, t) in enumerate(CAPTION)
-    )
 
-    body = "\n  ".join(rows) + "\n  " + art_group + "\n  " + caption_svg
+    body = "\n  ".join(rows) + "\n  " + art_group
     for name in ("dots", "key", "value", "text", "add", "delete"):
         body = body.replace("{" + name + "}", p[name])
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{SVG_WIDTH}" height="{height}" viewBox="0 0 {SVG_WIDTH} {height}">\n'

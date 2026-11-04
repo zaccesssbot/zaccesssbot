@@ -8,7 +8,7 @@
 </p>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="profile/profile-dark.svg?v=145">
-  <source media="(prefers-color-scheme: light)" srcset="profile/profile-light.svg?v=145">
-  <img alt="zaccesssbot's GitHub profile card: identity, contact and live Git stats" src="profile/profile-dark.svg?v=145" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="profile/profile-dark.svg?v=146">
+  <source media="(prefers-color-scheme: light)" srcset="profile/profile-light.svg?v=146">
+  <img alt="zaccesssbot's GitHub profile card: identity, contact and live Git stats" src="profile/profile-dark.svg?v=146" width="100%">
 </picture>

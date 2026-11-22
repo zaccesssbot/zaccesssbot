@@ -12,8 +12,8 @@
 
 <!-- the stats card is paused: the update-card workflow still builds it, so it returns by removing this comment
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="profile/profile-dark.svg?v=190">
-  <source media="(prefers-color-scheme: light)" srcset="profile/profile-light.svg?v=190">
-  <img alt="zaccesssbot's GitHub profile card: identity, contact and live Git stats" src="profile/profile-dark.svg?v=190" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="profile/profile-dark.svg?v=191">
+  <source media="(prefers-color-scheme: light)" srcset="profile/profile-light.svg?v=191">
+  <img alt="zaccesssbot's GitHub profile card: identity, contact and live Git stats" src="profile/profile-dark.svg?v=191" width="100%">
 </picture>
 -->
